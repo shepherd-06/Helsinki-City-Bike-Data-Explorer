@@ -6,7 +6,8 @@ This project focuses on processing and analyzing city bike trip data for eventua
 
 1. **Data Source**: CSV files containing city bike trips from `April to October` for the years `2021-2023`.
 2. **Data Cleaning and ETL**: Python script for data cleaning and bulk insertion into a PostgreSQL database.
-3. **Final Dashboard**: Data will be visualized in a `Tableau` or `Power BI` dashboard after pre-processing with Python.
+3. **Station Locations**: Station metadata, including geographic coordinates, collected from the [HSL Open Data Portal](https://www.avoindata.fi/data/en_GB/organization/helsingin-seudun-liikenne?vocab_keywords_en=city+bikes) provided by Helsingin seudun liikenne (HSL).
+4. **Final Dashboard**: Data will be visualized in a `Tableau` or `Power BI` dashboard after pre-processing with Python.
 
 ---
 
@@ -38,13 +39,34 @@ CREATE TABLE city_bike_trips (
 );
 ```
 
+A new table `Station` has been added to the database to store station metadata, including geographic coordinates, for integration with `Tableau` and easier linking to `city_bike_trips`.
+
+```SQL
+CREATE TABLE Station (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    latitude FLOAT NOT NULL,
+    longitude FLOAT NOT NULL
+);
+```
+
 ### Schema Details
+
+`city_bike_trips` Table:
 
 - `departure and return`: Timestamps for trip start and end
 - `departure_station_id`, `return_station_id`: IDs of the departure and return stations
 - `departure_station_name`, `return_station_name`: Names of the departure and return stations
 - `covered_distance`: Trip distance in meters
 - `duration`: Trip duration in seconds
+
+`Station` Table:
+
+- `id`: Unique station ID, matches with `departure_station_id` and `return_station_id` in the `city_bike_trips` table.
+- `name`: Station name.
+- `city`: City where the station is located (Helsinki, Espoo, Vantaa).
+- `latitude` and `longitude`: Geographic coordinates of the station.
 
 ## Python ETL Script
 
@@ -89,6 +111,30 @@ The script logs each step to `data_import.log`, including:
 
 If a failure occurs, the script stops and can resume from the last unprocessed file due to checkpoint files.
 
+## Station Metadata Integration
+
+The station names and their geographic coordinates were collected from the [HSL Open Data Portal](https://www.avoindata.fi/data/en_GB/organization/helsingin-seudun-liikenne?vocab_keywords_en=city+bikes) provided by Helsingin seudun liikenne (HSL). This data ensures accurate geolocation for all distinct stations in Helsinki, Espoo, and Vantaa.
+
+A Python script has been created to process these station details from the CSV files (`Helsingin_ja_Espoon.csv` and `Vantaan.csv`) and insert them into the Station table in the database.
+
+### Python Script for Station Table
+
+The script reads station data from the provided CSV files, extracts relevant columns (`ID`, `Name`, `City`, `x`, `y`), and populates the `Station` table.
+
+#### Script Usage
+
+Run the script to populate the `Station` table:
+
+```bash
+python populate_stations.py
+```
+
+#### Script Features
+
+- Reads station data from multiple CSV files.
+- Processes and maps columns to database fields.
+- Inserts records into the Station table with ON CONFLICT handling for duplicate IDs.
+
 ## Final Dashboard
 
 After completing data pre-processing, the data will be visualized in a Tableau or Power BI dashboard, providing insights into city bike trip patterns. The dashboard will leverage PostgreSQL as the data source to explore trends, station popularity, trip durations, and distances over time.
@@ -104,4 +150,10 @@ The Origin–Destination (OD) data of city bike stations includes all journeys m
 
 Data is available from the 2016 season onward and can be accessed by month (as CSV files) or for the entire season (as ZIP files). The data is owned by City Bike Finland.
 
-**Data collected from**: [HSL Open Data](https://www.hsl.fi/en/hsl/open-data)
+The station metadata includes latitude and longitude information for all stations in Helsinki, Espoo, and Vantaa.
+
+### Data collected from
+
+- [HSL Open Data Portal - Trips Data](https://www.hsl.fi/en/hsl/open-data)
+
+- [HSL Open Data Portal - Station Metadata](https://www.avoindata.fi/data/en_GB/organization/helsingin-seudun-liikenne?vocab_keywords_en=city+bikes)
